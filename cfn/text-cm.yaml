@@ -26,7 +26,7 @@ Resources:
         - 'arn:aws:iam::aws:policy/AmazonS3FullAccess'
         - 'arn:aws:iam::aws:policy/AmazonSQSFullAccess'
         - 'arn:aws:iam::aws:policy/AmazonSNSFullAccess'
-        - 'arn:aws:iam::aws:policy/AWSLambdaFullAccess'
+        - 'arn:aws:iam::aws:policy/AWSLambda_FullAccess'  # Updated policy name
         - 'arn:aws:iam::aws:policy/AmazonTextractFullAccess'
         - 'arn:aws:iam::aws:policy/ComprehendMedicalFullAccess'
         - 'arn:aws:iam::aws:policy/CloudWatchFullAccess'
@@ -58,6 +58,20 @@ Resources:
 
   RESULTBUCKET1:
     Type: 'AWS::S3::Bucket'
+
+  RESULTBUCKET1Policy:
+    Type: 'AWS::S3::BucketPolicy'
+    Properties:
+      Bucket: !Ref RESULTBUCKET1
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: 's3:GetObject'
+            Resource: !Sub '${RESULTBUCKET1.Arn}/*'
+            
   CUSTOMLAMBDA:
     Type: 'AWS::CloudFormation::CustomResource'
     Properties:
@@ -124,10 +138,11 @@ Resources:
         - BLOGROLE
         - Arn
       Timeout: 180
-      Runtime: python3.7
+      Runtime: python3.11
       
   VALIDATE:
     Type: 'AWS::Lambda::Function'
+    DependsOn: CUSTOMLAMBDA 
     Properties:
       Code:
         S3Bucket: !Ref RESULTBUCKET1
@@ -142,10 +157,11 @@ Resources:
           invalidsns: !Ref BLOGSNS
       Role: !GetAtt BLOGROLE.Arn
       Timeout: 120
-      Runtime: python3.7
+      Runtime: python3.11
 
   PARSE:
     Type: 'AWS::Lambda::Function'
+    DependsOn: CUSTOMLAMBDA
     Properties:
       Code:
         S3Bucket: !Ref RESULTBUCKET1
@@ -155,10 +171,11 @@ Resources:
       Handler: blog-parse.lambda_handler
       Role: !GetAtt BLOGROLE.Arn
       Timeout: 120
-      Runtime: python3.7
+      Runtime: python3.11
 
   QUEUE:
     Type: 'AWS::Lambda::Function'
+    DependsOn: CUSTOMLAMBDA
     Properties:
       Code:
         S3Bucket: !Ref RESULTBUCKET1
@@ -171,7 +188,7 @@ Resources:
           allqueue: !Ref ALLEQUEUE
       Role: !GetAtt BLOGROLE.Arn
       Timeout: 120
-      Runtime: python3.7
+      Runtime: python3.11
 
   QUEUETRIGGER:
     Type: 'AWS::Lambda::EventSourceMapping'
